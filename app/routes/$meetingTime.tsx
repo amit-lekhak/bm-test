@@ -7,6 +7,8 @@ import type { MetaFunction } from '@remix-run/node'; // or cloudflare/deno
 // packages
 import TimezoneSelect from 'react-timezone-select';
 import type { ITimezoneOption } from 'react-timezone-select/dist/esm/dist/types/timezone';
+import { Calendar } from '@mantine/dates';
+import { useMantineTheme } from '@mantine/core';
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   if (!data) {
@@ -48,12 +50,18 @@ export default function MeetingDetails() {
     altName: 'Kathmandu Time',
   });
 
+  const theme = useMantineTheme();
+
+  const excludedDates = [11, 12, 13, 14, 15];
+
   const [showTimezonePicker, setShowTimezonePicker] = useState(false);
+
+  const [value, setValue] = useState<Date | null>(null);
 
   return (
     <main className=' flex flex-col items-center py-24 mx-auto'>
       <div className='bg-white pb-4 border-neutral-200 flex'>
-        <div className='flex flex-col border-gray-200 p-5 min-w-full'>
+        <div className='flex flex-col border-gray-200 p-5 min-w-[30%]'>
           <Link to='/'>
             <img
               src={data.avatar}
@@ -152,7 +160,49 @@ export default function MeetingDetails() {
           </Link>
         </div>
 
-        <div>2</div>
+        <div className='mt-8 px-4 pb-4 w-[50%]'>
+          <Calendar
+            value={value}
+            onChange={setValue}
+            allowLevelChange={false}
+            minDate={new Date()}
+            firstDayOfWeek={'sunday'}
+            hideOutsideDates={true}
+            excludeDate={(date) => {
+              // Compare acutal date data along with month to avoid excluding date of other month from showing
+              return (
+                excludedDates.find((dt) => dt === date.getDate()) !== undefined
+              );
+            }}
+            size='lg'
+            dayStyle={(d, mod) => {
+              return mod.disabled
+                ? {
+                    color: theme.colors.gray[5],
+                  }
+                : {
+                    backgroundColor: mod.selected
+                      ? theme.colors.dark[9]
+                      : theme.colors.gray[1],
+                    margin: 2,
+                    borderRadius: 8,
+                    color: mod.selected ? theme.white : theme.black,
+                  };
+            }}
+            renderDay={(date) => {
+              const day = date.getDate();
+              const today = new Date().getDate();
+              return (
+                <div>
+                  {day}
+                  {day === today ? (
+                    <div className='rounded-full h-1 w-1 bg-gray-600 mx-auto -mt-3 mb-3' />
+                  ) : null}
+                </div>
+              );
+            }}
+          />
+        </div>
       </div>
     </main>
   );
