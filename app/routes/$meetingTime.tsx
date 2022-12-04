@@ -63,7 +63,12 @@ export default function MeetingDetails() {
   const [value, setValue] = useState<Date | null>(null);
 
   return (
-    <main className=" flex flex-col items-center py-24 mx-auto">
+    <main
+      className=" flex flex-col items-center py-24 mx-auto"
+      onClick={() => {
+        showTimezonePicker && setShowTimezonePicker(false);
+      }}
+    >
       <div className="bg-white pb-4 border-neutral-200 flex">
         <div className="flex flex-col border-gray-200 p-5 min-w-[30%]">
           <Link to="/">
@@ -223,11 +228,15 @@ export default function MeetingDetails() {
             }}
             renderDay={(date) => {
               const day = date.getDate();
-              const today = new Date().getDate();
+
+              const isToday = dayjs(dayjs().format("YYYY-MM-DD")).isSame(
+                dayjs(dayjs(date).format("YYYY-MM-DD"))
+              );
+
               return (
                 <div>
                   {day}
-                  {day === today ? (
+                  {isToday ? (
                     <div className="rounded-full h-1 w-1 bg-gray-600 mx-auto -mt-3 mb-3" />
                   ) : null}
                 </div>
