@@ -12,7 +12,7 @@ import dayjs from "dayjs";
 // types
 import type { MetaFunction } from "@remix-run/node"; // or cloudflare/deno
 import type { LoaderFunction } from "@remix-run/node";
-import type { ITimezoneOption } from "react-timezone-select/dist/esm/dist/types/timezone";
+import type { ITimezoneOption } from "react-timezone-select/dist/cjs";
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
   if (!data) {
@@ -29,11 +29,19 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 };
 
 type LoaderData = {
-  data: { name: string; avatar: string; duration: string };
+  data: {
+    name: string;
+    avatar: string;
+    duration: string;
+    rescheduleUid: string | null;
+  };
 };
 
-export const loader: LoaderFunction = async ({ params }) => {
+export const loader: LoaderFunction = async ({ request, params }) => {
   const meetingTime = params.meetingTime || "";
+
+  const url = new URL(request.url);
+  const rescheduleUid = url.searchParams.get("rescheduleUid");
 
   /* We would typically use an id here from params to fetch data from backend instead of 
   using meeting time like this. This just checks for 15 and 30 only,
@@ -44,6 +52,7 @@ export const loader: LoaderFunction = async ({ params }) => {
       name: "Saroj Subedi",
       avatar: "https://avatars.dicebear.com/api/bottts/v19.png",
       duration: meetingTime.includes("15") ? "15" : "30",
+      rescheduleUid,
     },
   });
 };
@@ -88,12 +97,7 @@ export default function MeetingDetails() {
   }, []);
 
   return (
-    <main
-      className=" flex flex-col p-24 mx-auto "
-      onClick={() => {
-        showTimezonePicker && setShowTimezonePicker(false);
-      }}
-    >
+    <main className=" flex flex-col p-24 mx-auto ">
       <div className="bg-white border-neutral-200 flex border rounded-sm">
         {/* Meeting and user info section */}
         <section className="max-w-[33%] ">
@@ -232,14 +236,26 @@ export default function MeetingDetails() {
                 if (v) {
                   const totalDate = dayjs(v).format("YYYY-MM-DD");
 
-                  setSearchParams(
-                    {
-                      date: totalDate,
-                    },
-                    {
-                      replace: true,
-                    }
-                  );
+                  {
+                    data.rescheduleUid
+                      ? setSearchParams(
+                          {
+                            rescheduleUid: data.rescheduleUid,
+                            date: totalDate,
+                          },
+                          {
+                            replace: true,
+                          }
+                        )
+                      : setSearchParams(
+                          {
+                            date: totalDate,
+                          },
+                          {
+                            replace: true,
+                          }
+                        );
+                  }
                 }
               }}
               allowLevelChange={false}
@@ -349,7 +365,13 @@ export default function MeetingDetails() {
 
                   return (
                     <Link
-                      to={`/book?date=${dateValue}&time=${formattedTime}&hourType=${hourType}&duration=${data.duration}`}
+                      to={`/book?${
+                        data.rescheduleUid
+                          ? "rescheduleUid=" + data.rescheduleUid + "&"
+                          : ""
+                      }date=${dateValue}&time=${formattedTime}&hourType=${hourType}&duration=${
+                        data.duration
+                      }&timezone=${selectedTimezone.value}`}
                       key={i}
                       className=" border-[0.5px] border-neutral-200 rounded-md hover:bg-gray-200 hover:border hover:border-black p-2 text-center"
                     >

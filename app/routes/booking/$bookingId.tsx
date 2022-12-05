@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { ActionFunction, json, redirect } from "@remix-run/node";
-import { Form, Link, useLoaderData } from "@remix-run/react";
+import { Form, Link, useLoaderData, useParams } from "@remix-run/react";
 
 // packages
 import { useSearchParams } from "@remix-run/react";
@@ -84,6 +84,8 @@ export default function BookingDetails() {
   const { data } = useLoaderData<LoaderData>();
 
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const params = useParams();
 
   const isBookingCancelled = Boolean(searchParams.get("cancel"));
 
@@ -203,7 +205,12 @@ export default function BookingDetails() {
                   <span className="text-gray-900 mr-2">
                     Need to make a change?
                   </span>
-                  <button className="underline mr-2 ">Reschedule</button>
+                  <Link
+                    to={`/${data.duration}min?rescheduleUid=${params.bookingId}`}
+                    className="underline mr-2 "
+                  >
+                    Reschedule
+                  </Link>
                   or
                   <button
                     className="underline ml-2"

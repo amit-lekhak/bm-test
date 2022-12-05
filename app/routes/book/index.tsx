@@ -37,6 +37,11 @@ type LoaderData = {
     date: string;
     time: string;
     hourType: string;
+    timezone: string;
+    rescheduleUid: string | null;
+    formerTime?: string;
+    bookerName?: string;
+    bookerEmail?: string;
   };
 };
 
@@ -54,6 +59,11 @@ export const loader: LoaderFunction = async ({ request }) => {
   const date = url.searchParams.get("date") || "";
   const time = url.searchParams.get("time") || "";
   const hourType = url.searchParams.get("hourType") || "24";
+  const timezone = url.searchParams.get("timezone") || "";
+
+  const rescheduleUid = url.searchParams.get("rescheduleUid");
+
+  // we have rescheduleId available to fetch data
 
   return json<LoaderData>({
     data: {
@@ -61,7 +71,14 @@ export const loader: LoaderFunction = async ({ request }) => {
       duration,
       date,
       time,
+      timezone,
       hourType,
+      rescheduleUid,
+      formerTime: rescheduleUid
+        ? "9:30am, Wednesday, December 7, 2022"
+        : undefined,
+      bookerName: rescheduleUid ? "John Doe" : undefined,
+      bookerEmail: rescheduleUid ? "john@doe.com" : undefined,
     },
   });
 };
@@ -69,38 +86,43 @@ export const loader: LoaderFunction = async ({ request }) => {
 export const action: ActionFunction = async ({ request }) => {
   const url = new URL(request.url);
   const duration = url.searchParams.get("duration") || "30";
+  const rescheduleUid = url.searchParams.get("rescheduleUid");
 
   const formData = await request.formData();
 
   const name = formData.get("name");
   const email = formData.get("email");
   const guestEmail = formData.get("guestEmail");
-  const notes = formData.get("notes");
 
   // need to add check for these input values to be string
 
-  const errors: ActionData = {
-    name: name ? null : "Name is required",
-    email: email
-      ? (email as string).match(/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/)
-        ? null
-        : "That doesn't look like an email address"
-      : "Email is required",
-    guestEmail: guestEmail
-      ? (guestEmail as string).match(
-          /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/
-        )
-        ? null
-        : "This doesn't look like an email address"
-      : null,
-  };
+  if (!rescheduleUid) {
+    const errors: ActionData = {
+      name: name ? null : "Name is required",
+      email: email
+        ? (email as string).match(
+            /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/
+          )
+          ? null
+          : "That doesn't look like an email address"
+        : "Email is required",
+      guestEmail: guestEmail
+        ? (guestEmail as string).match(
+            /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/
+          )
+          ? null
+          : "This doesn't look like an email address"
+        : null,
+    };
 
-  const hasErrors = Object.values(errors).some((errorMessage) => errorMessage);
+    const hasErrors = Object.values(errors).some(
+      (errorMessage) => errorMessage
+    );
 
-  if (hasErrors) {
-    return json<ActionData>(errors);
+    if (hasErrors) {
+      return json<ActionData>(errors);
+    }
   }
-
   // here id is received after booking success
   const id = "123456";
 
@@ -182,6 +204,23 @@ export default function BookingPage() {
                 </p>
               </div>
 
+              {data.rescheduleUid ? (
+                <div className="mt-8 mb-2 ml-2">
+                  <p className="mb-2">Former time</p>
+                  <div className="flex flex-nowrap text-sm font-medium space-x-2 items-center line-through">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 448 512"
+                      className="h-4 w-4 "
+                    >
+                      {/* <!--! Font Awesome Pro 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2022 Fonticons, Inc. --> */}
+                      <path d="M96 32V64H48C21.5 64 0 85.5 0 112v48H448V112c0-26.5-21.5-48-48-48H352V32c0-17.7-14.3-32-32-32s-32 14.3-32 32V64H160V32c0-17.7-14.3-32-32-32S96 14.3 96 32zM448 192H0V464c0 26.5 21.5 48 48 48H400c26.5 0 48-21.5 48-48V192z" />
+                    </svg>
+                    <p>{data.formerTime}</p>
+                  </div>
+                </div>
+              ) : null}
+
               {/* Meeting info end */}
             </div>
           </div>
@@ -198,12 +237,15 @@ export default function BookingPage() {
                     Your name
                   </label>
                 </p>
+
                 <input
                   type={"text"}
                   id="name"
                   name="name"
+                  defaultValue={data.rescheduleUid ? data.bookerName : ""}
                   placeholder="John Doe"
                   required
+                  readOnly={data.rescheduleUid ? true : false}
                   className={inputClassName}
                 />
 
@@ -229,12 +271,17 @@ export default function BookingPage() {
                     Email Address
                   </label>
                 </p>
+
                 <input
                   type={"email"}
                   id="email"
                   name="email"
+                  defaultValue={
+                    data.rescheduleUid ? data.bookerEmail : undefined
+                  }
                   placeholder="you@example.com"
                   required
+                  readOnly={data.rescheduleUid ? true : false}
                   className={inputClassName}
                 />
 
@@ -265,6 +312,7 @@ export default function BookingPage() {
                     type={"email"}
                     id="guestEmail"
                     name="guestEmail"
+                    disabled={data.rescheduleUid ? true : false}
                     placeholder="guest@example.com"
                     className={inputClassName}
                   />
@@ -287,18 +335,37 @@ export default function BookingPage() {
               ) : null}
 
               <div className="mb-4">
-                <p>
-                  <label htmlFor="notes" className={labelClassName}>
-                    Additional notes
-                  </label>
-                </p>
-                <textarea
-                  id="notes"
-                  name="notes"
-                  placeholder="Please share anything that will help prepare for our meeting."
-                  rows={3}
-                  className={inputClassName}
-                />
+                {data.rescheduleUid ? (
+                  <>
+                    <p>
+                      <label htmlFor="reschedule" className={labelClassName}>
+                        Reason for rescheduling (optional)
+                      </label>
+                    </p>
+                    <textarea
+                      id="reschedule"
+                      name="rescheduleReason"
+                      placeholder="Let others know why you need to reschedule."
+                      rows={3}
+                      className={inputClassName}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <p>
+                      <label htmlFor="notes" className={labelClassName}>
+                        Additional notes
+                      </label>
+                    </p>
+                    <textarea
+                      id="notes"
+                      name="notes"
+                      placeholder="Please share anything that will help prepare for our meeting."
+                      rows={3}
+                      className={inputClassName}
+                    />
+                  </>
+                )}
               </div>
 
               <div className="flex flex-row justify-end space-x-2">
@@ -325,7 +392,7 @@ export default function BookingPage() {
                   type="submit"
                   className="bg-black text-white p-2 rounded-md"
                 >
-                  Confirm
+                  {data.rescheduleUid ? "Reschedule" : "Confirm"}
                 </button>
               </div>
             </Form>
